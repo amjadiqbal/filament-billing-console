@@ -88,6 +88,7 @@ return [
         'synced' => 'Synced from Stripe',
         'synced_subscriptions' => ':count subscription updated|:count subscriptions updated',
         'sync_failed' => 'Sync failed',
+        'payment_method_not_updated' => 'The payment method was not updated.',
         'sync_throttled' => 'Too many syncs. Try again in :seconds seconds.',
     ],
 

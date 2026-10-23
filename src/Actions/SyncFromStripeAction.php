@@ -56,8 +56,12 @@ class SyncFromStripeAction
                         SubscriptionSync::subscription($record);
                         $body = null;
                     } else {
-                        $count = SubscriptionSync::customer($record);
-                        $body = trans_choice('filament-billing-console::billing-console.notifications.synced_subscriptions', $count, ['count' => $count]);
+                        $result = SubscriptionSync::customer($record);
+                        $body = trans_choice('filament-billing-console::billing-console.notifications.synced_subscriptions', $result['subscriptions'], ['count' => $result['subscriptions']]);
+
+                        if ($result['payment_method_error'] !== null) {
+                            $body .= ' '.$t('notifications.payment_method_not_updated').' '.$result['payment_method_error'];
+                        }
                     }
                 } catch (Throwable $e) {
                     report($e);

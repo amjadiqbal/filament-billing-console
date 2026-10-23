@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Laravel\Cashier\Http\Controllers\WebhookController;
 use Laravel\Cashier\Subscription;
 use Stripe\Subscription as StripeSubscription;
+use Throwable;
 
 /**
  * Writes Stripe's copy of a subscription into the Cashier tables with Cashier's own webhook code
@@ -44,16 +45,22 @@ class SubscriptionSync extends WebhookController
 
     /**
      * Refresh the customer's default payment method and every subscription of theirs the Cashier tables already have.
+     * A payment method that can't be read doesn't stop the subscriptions from syncing; its error is returned.
      *
-     * @return int The number of subscriptions synced.
+     * @return array{subscriptions: int, payment_method_error: ?string}
      */
-    public static function customer(Model $customer): int
+    public static function customer(Model $customer): array
     {
-        if (method_exists($customer, 'updateDefaultPaymentMethodFromStripe')) {
-            $customer->updateDefaultPaymentMethodFromStripe();
-        }
+        $paymentMethodError = null;
 
-        $synced = 0;
+        if (method_exists($customer, 'updateDefaultPaymentMethodFromStripe')) {
+            try {
+                $customer->updateDefaultPaymentMethodFromStripe();
+            } catch (Throwable $e) {
+                report($e);
+                $paymentMethodError = StripeGateway::describe($e);
+            }
+        }
 
         $subscriptions = BillingConsole::subscriptionModel()::query()
             ->where($customer->getForeignKey(), $customer->getKey())
@@ -61,9 +68,8 @@ class SubscriptionSync extends WebhookController
 
         foreach ($subscriptions as $subscription) {
             static::subscription($subscription);
-            $synced++;
         }
 
-        return $synced;
+        return ['subscriptions' => $subscriptions->count(), 'payment_method_error' => $paymentMethodError];
     }
 }

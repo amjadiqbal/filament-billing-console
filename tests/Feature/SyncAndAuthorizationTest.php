@@ -81,6 +81,17 @@ it('syncs a customer\'s payment method and subscriptions', function (): void {
         ->and($this->sub->refresh()->stripe_status)->toBe('canceled');
 });
 
+it('still syncs subscriptions when the payment method cannot be read', function (): void {
+    FakeStripe::route('GET /v1/customers/cus_acme', Stripe::error('api_error', 'Payment methods are down'), 500);
+    FakeStripe::route('GET /v1/subscriptions/sub_acme1', Stripe::subscription('sub_acme1', 'cus_acme', ['status' => 'past_due']));
+
+    livewire(ViewCustomer::class, ['record' => $this->acme->getKey()])
+        ->callAction('syncFromStripe')
+        ->assertNotified('Synced from Stripe');
+
+    expect($this->sub->refresh()->stripe_status)->toBe('past_due');
+});
+
 it('reports a failed sync without changing the record', function (): void {
     FakeStripe::route('GET /v1/subscriptions/sub_acme1', Stripe::error('invalid_request_error', 'No such subscription: sub_acme1'), 404);
 
