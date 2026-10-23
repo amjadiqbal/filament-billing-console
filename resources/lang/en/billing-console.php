@@ -21,8 +21,8 @@ return [
         'payment_method' => 'Payment method',
         'no_payment_method' => 'None on file',
         'generic_trial_ends' => 'Generic trial ends',
-        'active_subscriptions' => 'Active subscriptions',
-        'filter_subscribed' => 'Has an active subscription',
+        'active_subscriptions' => 'Current subscriptions',
+        'filter_subscribed' => 'Has a current subscription',
     ],
 
     'subscriptions' => [
@@ -80,7 +80,7 @@ return [
         'open_in_stripe' => 'Open in Stripe',
         'sync' => 'Sync from Stripe',
         'sync_heading' => 'Sync from Stripe?',
-        'sync_description_customers' => 'Reads this customer\'s payment method and subscriptions from Stripe and stores them in your Cashier tables. Nothing is changed in Stripe.',
+        'sync_description_customers' => 'Reads this customer\'s payment method, and the subscriptions your Cashier tables already have, from Stripe and stores them here. Nothing is changed in Stripe.',
         'sync_description_subscriptions' => 'Reads this subscription from Stripe and stores its status, dates and items in your Cashier tables. Nothing is changed in Stripe.',
     ],
 

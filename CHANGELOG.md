@@ -4,6 +4,13 @@ All notable changes to `filament-billing-console` are documented in this file, i
 
 ## [Unreleased]
 
+### Changed
+
+- The customers column and filter say "current subscriptions" (active, trialing or past due), and the customer sync
+  confirmation says it syncs only the subscriptions your Cashier tables already have.
+- README: exact sync behaviour (differences from the webhook, no import of Stripe-only subscriptions), which reads are
+  cached, the price limit, policy fallback, tenancy and the rate limit.
+
 ## [1.0.0] - 2026-10-23
 
 ### Added

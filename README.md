@@ -26,21 +26,25 @@ switching to the Stripe dashboard. It works with Filament 4 and 5.
 Cashier keeps your subscriptions in your own database and everything else in Stripe. This plugin puts both in one
 place, under a **Billing** group in your panel:
 
-- **Customers**: every user with a Stripe customer ID, their payment method and number of active subscriptions.
-  Search by name, email or Stripe ID; filter to who has an active subscription. The customer page shows their
+- **Customers**: every user with a Stripe customer ID, their payment method and number of current subscriptions
+  (active, trialing or past due). Search by name, email or Stripe ID; filter to who has a current subscription. The customer page shows their
   subscriptions, invoices and payments.
 - **Subscriptions**: from your Cashier tables, with status (active, trialing, past due, cancelled, ...), price, trial
   and end dates. Filter by status or by "cancelled, still in grace period". Past-due and unpaid subscriptions are
   counted next to the menu item.
 - **Invoices** and **Payments**: the latest invoices and charges, read from the Stripe API, with links to the invoice
-  PDF and the receipt. Filter by status; failed payments show Stripe's reason.
+  PDF and the receipt. Filter by status (for payments, the filter works on the loaded payments); failed payments show
+  Stripe's reason.
 - **MRR and churn**: monthly recurring revenue at list price, active, past-due and trialing subscriptions, and churn
   over the last 30 days. On the dashboard and above the subscriptions table.
 - **Open in Stripe**: every customer, subscription, invoice and payment links to the same record in the Stripe
   dashboard, in test or live mode to match your key.
-- **Sync from Stripe**: on a customer or subscription, reads Stripe's copy and stores it in your Cashier tables. It
-  uses Cashier's own webhook code, so the result is exactly what a delivered webhook would have stored. Handy when a
-  webhook was missed.
+- **Sync from Stripe**: on a subscription, reads Stripe's copy and stores its status, dates and items in your Cashier
+  tables with Cashier's own webhook code (`customer.subscription.updated`). Handy when a webhook was missed. Two
+  differences from the webhook, on purpose: an `incomplete_expired` subscription keeps its row (only the status is
+  updated; the webhook deletes it), and a sync is refused when Stripe says the subscription belongs to a different
+  customer than its owner here. On a customer, it refreshes the payment method and syncs the subscriptions already in
+  your Cashier tables; subscriptions that exist only in Stripe are not imported.
 
 **It never changes anything in Stripe.** There are no refund, cancel, swap or charge buttons; those stay in the Stripe
 dashboard (or in a future Pro version, see below). "Sync from Stripe" only writes to your own Cashier tables, and it
@@ -109,6 +113,10 @@ Billing data is sensitive, so decide who sees it. In order, the console uses:
 4. Otherwise everyone who can open the panel can see it. Panel access itself is already guarded by
    `canAccessPanel()`.
 
+A policy that exists but has no method for the checked ability (for example no `view`) allows it, as when there is no
+policy. The resources are not scoped to a Filament tenant: in a multi-tenant panel, limit them with `authorizeUsing()`
+or a policy.
+
 The resources are read-only: create, edit and delete are always denied.
 
 ## Options
@@ -137,16 +145,21 @@ BillingConsolePlugin::make()
   The card says how many items it left out. Trials are not counted.
 - **Churn, last 30 days** is the number of subscriptions that are cancelled and ended in the last 30 days, divided by
   those plus today's active and past-due ones.
-- Counts come from your database, so they are as current as your webhooks. Prices come from Stripe and are cached.
+- Counts come from your database, so they are as current as your webhooks. Prices come from Stripe and are cached;
+  only the first 1,000 recurring prices are read, and items on any other price are "not counted".
 
 These are quick operating numbers, not accounting figures. For revenue reporting, use Stripe's own reports.
 
 ## Stripe API use
 
-The console only reads: it calls the list and retrieve endpoints for invoices, charges, prices, subscriptions,
-customers and payment methods. Every read is cached (5 minutes by default, per mode), the Stripe client retries
-network errors twice, and failures (bad key, missing permission, rate limit, network) show a clear message in the
-table instead of an error page. Failures are not cached, so the next page load tries again.
+The console only reads from Stripe. The tables and the MRR card list invoices, charges and recurring prices; these
+lists are cached (5 minutes by default, per mode), the client retries network errors twice, and failures (bad key,
+missing permission, rate limit, network) show a clear message in the table instead of an error page. Failures are not
+cached, so the next page load tries again.
+
+"Sync from Stripe" reads live, never from the cache: the subscription, and through Cashier the customer with its
+default payment method and, for a subscription cancelled at period end, its first item. Every sync attempt, including a
+failed one, counts toward the per-user `syncsPerMinute()` limit.
 
 Invoices and payments tables load the latest 100 records (your `maxListRecords()`), then search, sort and paginate
 those in the panel. Filtering invoices by status asks Stripe for that status, so older ones show up too.
