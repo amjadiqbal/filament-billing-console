@@ -7,8 +7,10 @@
 #   scripts/ci-local.sh
 #   PHP_VERSIONS=8.5 LARAVEL_VERSIONS=13 FILAMENT_VERSIONS=5 scripts/ci-local.sh
 # Finds php8.x on PATH, or Homebrew's php@8.x. Tests committed code (HEAD) only.
-# If Docker is available, Stripe's official stripe-mock (pinned below) runs for the contract tests and is stopped at the
-# end; without Docker those tests are skipped and the summary says so. Nothing ever calls the real Stripe API.
+# Stripe's official stripe-mock runs for the contract tests (STRIPE_MOCK_BIN=/path/to/stripe-mock, else Docker image
+# pinned below) and is stopped at the end; without either those tests are skipped and the summary says so.
+#   STRIPE_MOCK_BIN=~/bin/stripe-mock scripts/ci-local.sh
+# Nothing ever calls the real Stripe API.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 REPO=$(pwd)
@@ -32,19 +34,32 @@ resolved() { # dir package -> installed version
 }
 
 COMPOSER=$(command -v composer)
-SHIM=$(mktemp -d); WORK=$(mktemp -d); MOCK=""
-cleanup() { rm -rf "$SHIM" "$WORK"; [ -n "$MOCK" ] && docker stop "$MOCK" >/dev/null 2>&1; }
+SHIM=$(mktemp -d); WORK=$(mktemp -d); MOCK=""; MOCK_PID=""
+cleanup() {
+  rm -rf "$SHIM" "$WORK"
+  [ -n "$MOCK" ] && docker stop "$MOCK" >/dev/null 2>&1
+  [ -n "$MOCK_PID" ] && kill "$MOCK_PID" 2>/dev/null
+}
 trap cleanup EXIT
 
+# stripe-mock: STRIPE_MOCK_BIN (a stripe-mock binary from github.com/stripe/stripe-mock releases) if set, else Docker.
 STRIPE_MOCK_IMAGE=stripe/stripe-mock:v0.206.0
 STRIPE_MOCK_PORT=${STRIPE_MOCK_PORT:-12199}
-if command -v docker >/dev/null 2>&1 && MOCK=$(docker run -d --rm -p "127.0.0.1:$STRIPE_MOCK_PORT:12111" "$STRIPE_MOCK_IMAGE" 2>/dev/null); then
-  export STRIPE_MOCK_URL="http://127.0.0.1:$STRIPE_MOCK_PORT"
-  for _ in 1 2 3 4 5 6 7 8 9 10; do curl -sf -u sk_test_123: "$STRIPE_MOCK_URL/v1/prices?limit=1" >/dev/null && break; sleep 1; done
-  RESULTS+=("pass  stripe-mock $STRIPE_MOCK_IMAGE on $STRIPE_MOCK_URL")
+if [ -n "${STRIPE_MOCK_BIN:-}" ] && [ -x "$STRIPE_MOCK_BIN" ]; then
+  "$STRIPE_MOCK_BIN" -http-port "$STRIPE_MOCK_PORT" >/dev/null 2>&1 &
+  MOCK_PID=$!
+  MOCK_DESC="$("$STRIPE_MOCK_BIN" -version 2>&1 | head -1) (binary)"
+elif command -v docker >/dev/null 2>&1 && docker image inspect "$STRIPE_MOCK_IMAGE" >/dev/null 2>&1 && MOCK=$(docker run -d --rm -p "127.0.0.1:$STRIPE_MOCK_PORT:12111" "$STRIPE_MOCK_IMAGE" 2>/dev/null); then
+  MOCK_DESC="$STRIPE_MOCK_IMAGE (Docker)"
 else
   MOCK=""
-  RESULTS+=("skip  stripe-mock contract tests (Docker not available)")
+fi
+if [ -n "$MOCK$MOCK_PID" ]; then
+  export STRIPE_MOCK_URL="http://127.0.0.1:$STRIPE_MOCK_PORT"
+  up=1; for _ in $(seq 1 20); do curl -sf -u sk_test_123: "$STRIPE_MOCK_URL/v1/prices?limit=1" >/dev/null && { up=0; break; }; sleep 1; done
+  if [ $up = 0 ]; then RESULTS+=("pass  stripe-mock $MOCK_DESC on $STRIPE_MOCK_URL"); else RESULTS+=("FAIL  stripe-mock did not start"); FAILED=1; fi
+else
+  RESULTS+=("skip  stripe-mock contract tests (no STRIPE_MOCK_BIN and no Docker)")
 fi
 BASE_PATH=$PATH
 

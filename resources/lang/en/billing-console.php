@@ -124,6 +124,7 @@ return [
         'rate_limit' => 'Stripe\'s rate limit was reached. Try again in a moment.',
         'connection' => 'Could not reach Stripe. Check the server\'s network and try again.',
         'api' => 'Stripe returned an error:',
+        'customer_mismatch' => 'Stripe says this subscription belongs to customer :customer, which is not this subscription\'s owner here. Nothing was changed.',
         'unexpected' => 'Something went wrong while reading from Stripe. The error was logged.',
     ],
 ];

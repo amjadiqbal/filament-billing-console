@@ -91,6 +91,16 @@ it('reports a failed sync without changing the record', function (): void {
     expect($this->sub->refresh()->stripe_status)->toBe('active');
 });
 
+it('refuses a sync when Stripe says the subscription belongs to another customer', function (): void {
+    FakeStripe::route('GET /v1/subscriptions/sub_acme1', Stripe::subscription('sub_acme1', 'cus_someone_else', ['status' => 'canceled']));
+
+    livewire(ViewSubscription::class, ['record' => $this->sub->getKey()])
+        ->callAction('syncFromStripe')
+        ->assertNotified('Sync failed');
+
+    expect($this->sub->refresh()->stripe_status)->toBe('active');
+});
+
 it('rate-limits syncs per user', function (): void {
     FakeStripe::route('GET /v1/subscriptions/sub_acme1', Stripe::subscription('sub_acme1', 'cus_acme'));
     billingPlugin()->syncsPerMinute(2);

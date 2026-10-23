@@ -25,6 +25,13 @@ class SubscriptionSync extends WebhookController
     public static function subscription(Subscription $subscription): void
     {
         $stripe = StripeGateway::client()->subscriptions->retrieve((string) $subscription->getAttribute('stripe_id'));
+        $customer = is_string($stripe->customer) ? $stripe->customer : $stripe->customer->id;
+        $owner = $subscription->owner()->first();
+
+        // Cashier's handler looks the owner up by Stripe customer and silently does nothing when it doesn't match.
+        if (! $owner || $owner->getAttribute('stripe_id') !== $customer) {
+            throw new SyncException(__('filament-billing-console::billing-console.errors.customer_mismatch', ['customer' => $customer]));
+        }
 
         if ($stripe->status === StripeSubscription::STATUS_INCOMPLETE_EXPIRED) {
             $subscription->forceFill(['stripe_status' => $stripe->status])->save();

@@ -90,6 +90,7 @@ class StripeGateway
         $t = fn (string $key): string => __("filament-billing-console::billing-console.errors.{$key}");
 
         $message = match (true) {
+            $e instanceof SyncException => $e->getMessage(),
             $e instanceof AuthenticationException => $t('authentication'),
             $e instanceof PermissionException => $t('permission'),
             $e instanceof RateLimitException => $t('rate_limit'),
