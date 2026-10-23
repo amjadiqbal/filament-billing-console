@@ -1,0 +1,78 @@
+{
+    "name": "amjadiqbal/filament-billing-console",
+    "description": "A free, read-only Filament 4 and 5 billing console for Laravel Cashier (Stripe): customers, subscriptions, invoices, payments and an MRR and churn summary in your panel.",
+    "keywords": [
+        "filament",
+        "filament-plugin",
+        "filamentphp",
+        "laravel",
+        "laravel-cashier",
+        "cashier",
+        "billing",
+        "subscriptions",
+        "invoices",
+        "mrr",
+        "saas"
+    ],
+    "homepage": "https://amjad.com.pk/filament/plugins/filament-billing-console",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Amjad Iqbal",
+            "homepage": "https://amjad.com.pk",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/amjadiqbal/filament-billing-console/issues",
+        "source": "https://github.com/amjadiqbal/filament-billing-console",
+        "docs": "https://amjad.com.pk/filament/plugins/filament-billing-console"
+    },
+    "require": {
+        "php": "^8.2",
+        "filament/filament": "^4.0|^5.0",
+        "illuminate/contracts": "^12.0|^13.0",
+        "laravel/cashier": "^16.0",
+        "spatie/laravel-package-tools": "^1.16"
+    },
+    "require-dev": {
+        "larastan/larastan": "^3.0",
+        "laravel/pint": "^1.18",
+        "orchestra/testbench": "^10.0|^11.0",
+        "pestphp/pest": "^3.0|^4.0",
+        "pestphp/pest-plugin-laravel": "^3.0|^4.0",
+        "pestphp/pest-plugin-livewire": "^3.0|^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "AmjadIqbal\\FilamentBillingConsole\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AmjadIqbal\\FilamentBillingConsole\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/pest",
+        "lint": "vendor/bin/pint --test",
+        "format": "vendor/bin/pint",
+        "analyse": "vendor/bin/phpstan analyse --memory-limit=1G"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "AmjadIqbal\\FilamentBillingConsole\\FilamentBillingConsoleServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
